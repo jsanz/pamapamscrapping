@@ -32,7 +32,6 @@ Done in 1.48s.
 
 Finalize the exporting process:
 
-- [ ] Set up a file output option (mandatory)
 - [ ] Reorganize a bit the script to separate TypeScript types and a main function outside the initial command line interface script
 - [ ] Expose a simple web interface to generate and download the CSV
 - [ ] Try to deploy the script to a PaaS like `now` or `heroku`

@@ -5,15 +5,24 @@ import { default as cheerio } from 'cheerio';
 
 import { default as rp } from 'request-promise';
 
-import { parse }from 'json2csv';
+import { parse } from 'json2csv';
 
 const args = require('yargs')
     .alias('f', 'force')
     .boolean('f')
-    .describe('f', 'Force to download the assets').argv;
+    .describe('f', 'Force to download the assets')
+    .alias('o', 'output')
+    .default('o', 'pamapam.csv')
+    .describe('o', 'Output CSV location')
+    .alias('c','cache-dir')
+    .describe('c','Directory for cached assets')
+    .default('c','.cache')
+    .argv;
 
 const FORCE = args.force;
-const CACHE_DIR = path.join(process.cwd(), '.cache');
+const CACHE_DIR = args.cacheDir;
+debug('CLI arguments:')
+debug(Object.keys(args).map(k => `     ${k}: ${args[k]}`).join('\r\n'));
 
 async function downloadAsset(url: URL, path: fs.PathLike) {
     if (!fs.existsSync(path) || FORCE) {
@@ -97,7 +106,6 @@ function getTagLine($: CheerioStatic): string {
 function getCriteria($: CheerioStatic) {
     const criteria: criteriaRating[] = [];
     $('#criteris > li').each((_, el) => {
-        
         const names = el.children.filter(e => e.type == 'text' && e.data && e.data.trim() != '');
         let name = '';
 
@@ -166,10 +174,12 @@ async function downloadBusinessPage(chincheta: Chincheta): Promise<businessPage>
     Promise.all(extendedPointsPromises).then(results => {
         const pointsPath = path.join(CACHE_DIR, 'points.json');
         fs.writeFileSync(pointsPath, JSON.stringify(results));
-        console.log(`File gererated: ${pointsPath}`);
 
-        const fields = ['title','longitude','latitude','sector','url'];
-        const opts = {fields};
-        console.log(parse(results,opts))
+        const fields = ['id', 'title', 'longitude', 'latitude', 'sector', 'url'];
+        const opts = { fields };
+        const resultStr = parse(results, opts);
+        const resultPath = fs.writeFileSync(args.output, resultStr);
+        console.log(`Output file generated at ${args.output} with ${results.length} records`);
+        debug('Done!');
     });
 })();
