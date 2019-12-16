@@ -8,11 +8,14 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "nvm": "~/.nvm/nvm-exec which node | xargs -I % ln -sf % ./.nvm-node && chmod +x ./.nvm-node",
+    "clean": "rm -rf .cache dist",
     "ts-node": "ts-node",
-    "start": "ts-node src/index.ts"
+    "build": "tsc",
+    "dev": "DEBUG=pamapam ts-node src/index.ts",
+    "start": "node dist/index.js"
   },
   "devDependencies": {
+    "@types/cheerio": "^0.22.15",
     "@types/json2csv": "^4.5.0",
     "@types/puppeteer": "^2.0.0",
     "@types/request": "^2.48.3",
@@ -22,17 +25,16 @@
     "@typescript-eslint/parser": "^2.11.0",
     "eslint-config-prettier": "^6.7.0",
     "eslint-plugin-prettier": "^3.1.1",
-    "prettier": "^1.19.1"
+    "prettier": "^1.19.1",
+    "ts-node": "^8.5.4",
+    "typescript": "^3.7.3"
   },
   "dependencies": {
-    "@types/cheerio": "^0.22.15",
     "cheerio": "^1.0.0-rc.3",
     "debug": "^4.1.1",
     "json2csv": "^4.5.4",
     "request": "^2.88.0",
     "request-promise": "^4.2.5",
-    "ts-node": "^8.5.4",
-    "typescript": "^3.7.3",
     "yargs": "^15.0.2"
   }
 }
