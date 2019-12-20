@@ -108,3 +108,5 @@ dist
 yarn.lock
 
 *.csv
+*.geo.json
+.elasticsearch.json

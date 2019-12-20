@@ -2,20 +2,22 @@
     "name": "pamapamscrapping",
     "version": "1.0.0",
     "description": "Small scrapper for Pam a Pam website to collect and analyze data",
-    "main": "src/index.ts",
+    "main": "src/elastic.ts",
     "repository": "git@github.com:jsanz/pamapamscrapping.git",
     "author": "Jorge Sanz <jorge.sanz@elastic.co>",
     "license": "MIT",
     "private": false,
     "scripts": {
-        "clean": "rm -rf .cache dist",
-        "eslint": "eslint",
+        "clean": "rimraf .cache dist",
         "ts-node": "ts-node",
         "build": "tsc",
+        "lint": "eslint",
+        "precsv": "tsc",
+        "csv": "node dist/csv",
         "dev": "DEBUG=pamapam ts-node src/index.ts",
         "dev:w": "DEBUG=pamapam nodemon",
-        "prestart": "tsc",
-        "start": "node dist/index.js"
+        "preelastic": "tsc",
+        "elastic": "node dist/elastic.js"
     },
     "devDependencies": {
         "@types/cheerio": "^0.22.15",
@@ -23,6 +25,7 @@
         "@types/geojson": "^7946.0.7",
         "@types/html-to-text": "^1.4.31",
         "@types/json2csv": "^4.5.0",
+        "@types/mkdirp": "^0.5.2",
         "@types/puppeteer": "^2.0.0",
         "@types/request": "^2.48.3",
         "@types/request-promise": "^4.1.45",
@@ -34,6 +37,7 @@
         "eslint-plugin-prettier": "^3.1.1",
         "nodemon": "^2.0.2",
         "prettier": "^1.19.1",
+        "rimraff": "^0.0.1-security",
         "ts-node": "^8.5.4",
         "typescript": "^3.7.3"
     },
@@ -43,6 +47,7 @@
         "debug": "^4.1.1",
         "html-to-text": "^5.1.1",
         "json2csv": "^4.5.4",
+        "mkdirp": "^0.5.1",
         "request": "^2.88.0",
         "request-promise": "^4.2.5",
         "yargs": "^15.0.2"

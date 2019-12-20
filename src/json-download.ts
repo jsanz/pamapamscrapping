@@ -1,8 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { default as mkdirp } from 'mkdirp';
 import { parse } from 'json2csv';
 import * as htmlToText from 'html-to-text';
-import { Point, Feature, FeatureCollection } from 'geojson';
+import { Feature, FeatureCollection } from 'geojson';
 
 import { debug, downloadAsset } from './utils';
 
@@ -14,6 +15,7 @@ type DownloadArgs = {
 
 type RawPoint = {
     id: number;
+    slug: string;
     post_title: string;
     post_content: string;
     post_date: string;
@@ -54,6 +56,7 @@ type RawPoint = {
 
 type ProcessedPoint = {
     id: number;
+    slug: string;
     date: Date;
 
     nombre: string;
@@ -96,6 +99,7 @@ const PUNTS_URL = 'https://pamapampv.org/directori-de-punts/?json';
 function processPoint(point: RawPoint): Partial<ProcessedPoint> {
     return {
         id: point.id,
+        slug: point.slug,
         date: new Date(point.post_date),
 
         nombre: point.post_title,
@@ -152,24 +156,37 @@ function getGeoJSON(points: ProcessedPoint[]): FeatureCollection {
 }
 
 async function getPointsReport(args: DownloadArgs): Promise<ProcessedPoint[]> {
+    // Confirm cache dir exists
+    if (!fs.existsSync(args.cacheDir)) {
+        mkdirp(args.cacheDir, err => {
+            if (err) {
+                console.log(err);
+            }
+        });
+    }
+
     // Get the JSON web output
     const jsonPath = path.join(args.cacheDir, 'raw-points.json');
     const jsonPoints = (await downloadAsset(args.force, new URL(PUNTS_URL), jsonPath)).toString();
     const points = JSON.parse(jsonPoints) as [];
 
     // Process and save the JSON
-    const processedPoints = points.map(processPoint);
+    const processedPoints = points.map(processPoint) as ProcessedPoint[];
     const processedPointsPath = path.join(args.cacheDir, 'points.json');
-    debug('Writing the processed points into: ', processedPointsPath);
+    console.log('Writing the processed points into:', processedPointsPath);
     fs.writeFileSync(processedPointsPath, JSON.stringify(processedPoints));
-
-    // Process and save as GeoJSON
-    const geoJSONPoints = getGeoJSON(processedPoints as ProcessedPoint[]);
-    fs.writeFileSync(args.output + '.geo.json', JSON.stringify(geoJSONPoints));
 
     // Generate CSV output
     if (args.output) {
-        fs.writeFileSync(args.output, parse(processedPoints));
+        const stripHTML = processedPoints.map(
+            (point: ProcessedPoint): ProcessedPoint => {
+                const clone = { ...point };
+                clone.content = htmlToText.fromString(point.content);
+                return clone;
+            },
+        );
+        console.log(`CSV stored succesfully at ${args.output} with ${stripHTML.length} records`);
+        fs.writeFileSync(args.output, parse(stripHTML));
     }
 
     return processedPoints as ProcessedPoint[];
