@@ -1,24 +1,10 @@
-const debug = require('debug')('pamapam');
-
 import * as fs from 'fs';
 import * as path from 'path';
 import { default as cheerio } from 'cheerio';
 
-import { default as rp } from 'request-promise';
-
 import { parse } from 'json2csv';
 
-async function downloadAsset(force: boolean, url: URL, path: fs.PathLike) {
-    if (!fs.existsSync(path) || force) {
-        debug('Downloading resource...');
-        const resource = await rp(url.href);
-        debug('Saving it into disk', path);
-        fs.writeFileSync(path, resource);
-    } else {
-        debug('Reusing resource from cache')
-    }
-    return fs.readFileSync(path);
-}
+import { debug, downloadAsset } from './utils';
 
 const CRITERIA = [
     'Comerç just',
@@ -35,8 +21,8 @@ const CRITERIA = [
     'Participació',
     'Programari Lliure',
     'Proximitat',
-    'Transparència'
-]
+    'Transparència',
+];
 
 type Business = {
     id: string;
@@ -49,9 +35,9 @@ type Business = {
 };
 
 type BusinessContent = {
-    id: string,
-    content: string
-}
+    id: string;
+    content: string;
+};
 
 function processChincheta(element: CheerioElement): Partial<Business> {
     const urlEl = element.childNodes.filter(el => el.tagName == 'h4');
@@ -77,7 +63,7 @@ function processChincheta(element: CheerioElement): Partial<Business> {
         latitude: parseFloat(element.attribs['data-markerlat']),
         longitude: parseFloat(element.attribs['data-markerlon']),
         sector,
-        url
+        url,
     };
 }
 
@@ -99,8 +85,8 @@ function getTagLine($: CheerioStatic): string {
         .text();
 }
 
-function getCriteria($: CheerioStatic) {
-    const criteria: { [id: string] : number} = {};
+function getCriteria($: CheerioStatic): object {
+    const criteria: { [id: string]: number } = {};
     $('#criteris > li').each((_, el) => {
         const names = el.children.filter(e => e.type == 'text' && e.data && e.data.trim() != '');
         let name = '';
@@ -109,7 +95,7 @@ function getCriteria($: CheerioStatic) {
             name = names[0].data.trim();
         }
 
-        if (CRITERIA.indexOf(name) == -1){
+        if (CRITERIA.indexOf(name) == -1) {
             debug('------------------------------------------>' + name);
         }
 
@@ -124,8 +110,8 @@ function getCriteria($: CheerioStatic) {
     return criteria;
 }
 
-function getBusinessData(bd:BusinessContent): Partial<Business> {
-    debug('Parse business page')
+function getBusinessData(bd: BusinessContent): Partial<Business> {
+    debug('Parse business page');
     const $ = cheerio.load(bd.content);
     const tagLine = getTagLine($);
     const criteria = getCriteria($);
@@ -137,8 +123,12 @@ function getBusinessData(bd:BusinessContent): Partial<Business> {
     };
 }
 
-async function downloadBusinessPage(cache_dir: string, force: boolean, obj: {id: string, url: string}): Promise<BusinessContent> {
-    const cPath = path.join(cache_dir, obj.id + 'html');
+async function downloadBusinessPage(
+    cacheDir: string,
+    force: boolean,
+    obj: { id: string; url: string },
+): Promise<BusinessContent> {
+    const cPath = path.join(cacheDir, obj.id + 'html');
     const content = await downloadAsset(force, new URL(obj.url), cPath);
     return {
         id: obj.id,
@@ -146,7 +136,7 @@ async function downloadBusinessPage(cache_dir: string, force: boolean, obj: {id:
     };
 }
 
-async function scrapping(args: {force: boolean, cacheDir: string, output: string})  {
+async function scrapping(args: { force: boolean; cacheDir: string; output: string }): Promise<void> {
     const FORCE = args.force;
     const CACHE_DIR = args.cacheDir;
 
@@ -159,37 +149,31 @@ async function scrapping(args: {force: boolean, cacheDir: string, output: string
     const rootPath = path.join(CACHE_DIR, 'index.html');
     const rootUrl = new URL('https://pamapampv.org/directori-de-punts/');
 
-    debug('Getting the main webpage')
+    debug('Getting the main webpage');
     const rootContent = await downloadAsset(FORCE, rootUrl, rootPath);
     const $ = cheerio.load(rootContent);
 
     debug('Parsing the main website...');
     const chinchetas = getPoints($);
 
-    debug('For each business process its website...')
-    const businessHtml = await chinchetas.map(function(c:Partial<Business>): Promise<BusinessContent> {
-        return downloadBusinessPage(CACHE_DIR, FORCE, {id: c.id || '', url: c.url ||  '' });
+    debug('For each business process its website...');
+    const businessHtml = await chinchetas.map(function(c: Partial<Business>): Promise<BusinessContent> {
+        return downloadBusinessPage(CACHE_DIR, FORCE, { id: c.id || '', url: c.url || '' });
     });
 
     // Receive all the HTMLs
-    Promise.all(businessHtml).then((results:BusinessContent[])=>{
+    Promise.all(businessHtml).then((results: BusinessContent[]) => {
         const processed = results.map(business => {
             // Get the business data
-            const businessBasicData = chinchetas.find((c) => c.id == business.id);
-            const businessExtendedData = getBusinessData(business)
-            return { ...businessBasicData, ...businessExtendedData} as Business;
-        })
+            const businessBasicData = chinchetas.find(c => c.id == business.id);
+            const businessExtendedData = getBusinessData(business);
+            return { ...businessBasicData, ...businessExtendedData } as Business;
+        });
 
         const pointsPath = path.join(CACHE_DIR, 'points.json');
         fs.writeFileSync(pointsPath, JSON.stringify(results));
 
-        const fields = ['id',
-                        'title',
-                        'longitude',
-                        'latitude',
-                        'sector',
-                        'url'
-                    ].concat(CRITERIA);
+        const fields = ['id', 'title', 'longitude', 'latitude', 'sector', 'url'].concat(CRITERIA);
         const opts = { fields };
         const resultStr = parse(processed, opts);
         fs.writeFileSync(args.output, resultStr);
@@ -198,7 +182,4 @@ async function scrapping(args: {force: boolean, cacheDir: string, output: string
     });
 }
 
-
-export {
-    scrapping
-}
+export { scrapping };
